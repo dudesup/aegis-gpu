@@ -1,0 +1,7 @@
+bin/
+dist/
+aegis-gpu
+aegis-gpu.exe
+
+*.log
+.env
