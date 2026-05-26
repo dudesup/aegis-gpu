@@ -24,7 +24,7 @@ func NewMockProvider(devices uint) *MockNVMLProvider {
 
 func (m *MockNVMLProvider) Init() error {
 	for i := uint(0); i < m.deviceCount; i++ {
-		m.baseTemps[i] = 45.0 // Temperatura w spoczynku
+		m.baseTemps[i] = 45.0 // Idle temperature
 		m.injectedXID[i] = 0
 		m.tempDelta[i] = 0.0
 	}
@@ -40,19 +40,20 @@ func (m *MockNVMLProvider) QueryMetrics(deviceIdx uint) (GPUMetrics, error) {
 		return GPUMetrics{}, fmt.Errorf("device index out of bounds")
 	}
 
-	// Symulacja szumu pomiarowego (czujniki fizyczne zawsze lekko drgają)
+	// Simulate measurement noise (physical sensors always jitter slightly)
 	noise := (rand.Float64() - 0.5) * 0.4
 
-	// Wyliczanie temperatury z uwzględnieniem bezwładności i wstrzykniętych awarii
+	// Calculate temperature considering inertia and injected faults
 	m.baseTemps[deviceIdx] += m.tempDelta[deviceIdx]
-	// Naturalne schładzanie do temperatury bazowej, jeśli brak obciążenia/awarii
+
+	// Natural cooling back to base temperature if there is no load/fault
 	if m.tempDelta[deviceIdx] == 0 && m.baseTemps[deviceIdx] > 45.0 {
 		m.baseTemps[deviceIdx] -= 0.1
 	}
 
 	currentTemp := m.baseTemps[deviceIdx] + noise
 
-	// Dynamiczny pobór prądu powiązany z temperaturą
+	// Dynamic power draw tied to temperature
 	power := 80.0 + (currentTemp-45.0)*4.5
 	if power > 350.0 {
 		power = 350.0
@@ -66,9 +67,9 @@ func (m *MockNVMLProvider) QueryMetrics(deviceIdx uint) (GPUMetrics, error) {
 		PowerDraw:      power,
 		PowerLimit:     350.0,
 		FanSpeed:       uint(currentTemp * 1.1),
-		VRAMTotal:      85899345920, // 80 GB (jak w H100)
+		VRAMTotal:      85899345920, // 80 GB (like H100)
 		VRAMUsed:       uint64(rand.Float64() * 70000000000),
-		GPUUtilization: uint(rand.Intn(30) + 70), // Symulacja pracy pre-trainingu (70-100%)
+		GPUUtilization: uint(rand.Intn(30) + 70), // Simulate pre-training workload (70-100%)
 		XidError:       m.injectedXID[deviceIdx],
 		EccSingleBit:   uint64(rand.Intn(2)),
 		EccMultiBit:    0,
